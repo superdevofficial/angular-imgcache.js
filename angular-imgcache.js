@@ -14,6 +14,25 @@ angular.module('ImgCache', [])
         });
     };
 
+    ImgCache.getCachedFileURLNative = function(src,callback)
+    {
+        ImgCache.getCachedFile(src, function(src, entry) {
+            if(entry)
+            {
+                //There is an IOS bug, cdvfile is unsupported so we access to persistent storage by using meteor local filsystem url
+                var dest = ImgCache.helpers.EntryGetURL(entry);
+                if(ImgCache.helpers.isCordova() && dest && dest.startsWith('cdvfile'))
+                {
+                    callback(src,ImgCache.options.localFileSystemBaseUrl+entry.nativeURL.replace('file:///',''));
+                }else{
+                    callback(src,dest);
+                }
+            }else{
+                callback(src,'');
+            }
+        });
+    };
+
     this.manualInit = false;
 
     this.setOptions = function(options) {
@@ -32,6 +51,11 @@ angular.module('ImgCache', [])
         ImgCache.$deferred = $q.defer();
         ImgCache.$promise = ImgCache.$deferred.promise;
 
+        if(!ImgCache.options.localFileSystemBaseUrl)
+        {
+            ImgCache.options.localFileSystemBaseUrl = 'http://localhost:12160/local-filesystem/';
+        }
+
         if (!this.manualInit) {
             ImgCache.$init();
         }
@@ -45,7 +69,7 @@ angular.module('ImgCache', [])
         restrict: 'A',
         link: function(scope, el, attrs) {
             var setImg = function(type, el, src) {
-                ImgCache.getCachedFileURL(src, function(src, dest) {
+                ImgCache.getCachedFileURLNative(src, function(src, dest) {
                     if (type === 'bg') {
                         el.css({'background-image': 'url(' + dest + ')'});
                     } else {
